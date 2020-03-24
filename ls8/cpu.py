@@ -7,9 +7,12 @@ class CPU:
     """Main CPU class."""
 
     def __init__(self):
-        """Construct a new CPU."""
+        """Construct a new CPU. / ADD THE CONSTRUCTOR TO CPU"""
         # Create memory (256 bits)
+        # The LS-8 has 8-bit addressing, so can address 256 bytes of RAM total.
         self.ram = [0] * 256
+
+        # Add properties for other internal registers needed, e.g. reg pc ir
 
         # 8 general-purpose 8-bit numeric registers R0-R7
         # R5 is reserved as the interrupt mask (IM)
@@ -18,15 +21,17 @@ class CPU:
         self.reg = [0] * 8
 
         # Program Counter (PC)
+        # PC: Program Counter, address of the currently executing instruction
         # Keep track of where you are on the memory stack
         self.pc = 0
 
-        #
+        # IR: Instruction Register, contains a copy of the currently executing instruction
         self.ir = 0b00000000
 
         # Flag register (FL)
         # Holds the current flags status
         # These flags can change based on the operands given to the CMP opcode
+        # The register is made up of 8 bits. If a particular bit is set, that flag is "true".
         '''
         FL bits: 00000LGE
         L Less-than: during a CMP, set to 1 if registerA is less than registerB, zero otherwise.
@@ -73,6 +78,10 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -103,6 +112,8 @@ class CPU:
     The MDR contains the data that was read or the data to write.
     '''
 
+    # ADD RAM FUNCTIONS
+
     # Accepts the address to read and return the value stored there.
     def ram_read(self, mar):
         return self.ram[mar]
@@ -122,6 +133,8 @@ class CPU:
         prn = 0b01000111
         hlt = 0b00000001
         mul = 0b10100010
+        add = 0b10100000
+        sub = 0b10100001
 
         # Start running the CPU
         while running:
@@ -144,7 +157,13 @@ class CPU:
                 print(f'{self.reg[operand_a]}')
                 self.pc += 2
             elif ir == mul:
-                self.reg[operand_a] *= self.reg[operand_b]
+                self.alu('MUL', operand_a, operand_b)
+                self.pc += 3
+            elif ir == add:
+                self.alu('ADD', operand_a, operand_b)
+                self.pc += 3
+            elif ir == sub:
+                self.alu('SUB', operand_a, operand_b)
                 self.pc += 3
 
             # HLT
