@@ -26,7 +26,6 @@ class CPU:
         self.pc = 0
 
         # IR: Instruction Register, contains a copy of the currently executing instruction
-        self.ir = 0b00000000
 
         # Flag register (FL)
         # Holds the current flags status
@@ -39,6 +38,41 @@ class CPU:
         E Equal: during a CMP, set to 1 if registerA is equal to registerB, zero otherwise.
         '''
         self.fl = 0b00000000
+
+        def LDI(operand_a, operand_b):
+            self.reg[operand_a] = operand_b
+            self.pc += 3
+
+        def PRN(operand_a, operand_b):
+            print(f'{self.reg[operand_a]}')
+            self.pc += 2
+
+        def MUL(operand_a, operand_b):
+            self.alu('MUL', operand_a, operand_b)
+            self.pc += 3
+
+        def ADD(operand_a, operand_b):
+            self.alu('ADD', operand_a, operand_b)
+            self.pc += 3
+
+        def SUB(operand_a, operand_b):
+            self.alu('SUB', operand_a, operand_b)
+            self.pc += 3
+
+        def HLT(operand_a, operand_b):
+            self.running = False
+
+        self.running = True
+
+        self.opcodes = {
+            # List of opcodes
+            0b10000010: LDI,
+            0b01000111: PRN,
+            0b00000001: HLT,
+            0b10100010: MUL,
+            0b10100000: ADD,
+            0b10100001: SUB
+        }
 
     def load(self):
         """Load a program into memory."""
@@ -75,13 +109,26 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
+        def ADD(reg_a, reg_b):
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
-        elif op == "SUB":
-            self.reg[reg_a] -= self.reg[reg_b]
-        elif op == "MUL":
+
+        def MUL(reg_a, reg_b):
             self.reg[reg_a] *= self.reg[reg_b]
+
+        def SUB(reg_a, reg_b):
+            self.reg[reg_a] -= self.reg[reg_b]
+
+        alu_opcodes = {
+            'ADD': ADD,
+            'SUB': SUB,
+            'MUL': MUL
+        }
+
+        alu_op = alu_opcodes[op]
+
+        if alu_op:
+            alu_op(reg_a, reg_b)
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -125,19 +172,9 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        # Initialize CPU
-        running = True
-
-        # List of opcodes
-        ldi = 0b10000010
-        prn = 0b01000111
-        hlt = 0b00000001
-        mul = 0b10100010
-        add = 0b10100000
-        sub = 0b10100001
 
         # Start running the CPU
-        while running:
+        while self.running:
             self.trace()
             # Get the first set of instructions
             # Instruction Register (IR)
@@ -145,31 +182,35 @@ class CPU:
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            # LDI (register) (immediate)
-            # Set the value of a register to an integer.
-            if ir == ldi:
-                self.reg[operand_a] = operand_b
-                self.pc += 3
-            # PRN (register) pseudo-instruction
-            # Print numeric value stored in the given register.
-            # Print to the console the decimal integer value that is stored in the given register.
-            elif ir == prn:
-                print(f'{self.reg[operand_a]}')
-                self.pc += 2
-            elif ir == mul:
-                self.alu('MUL', operand_a, operand_b)
-                self.pc += 3
-            elif ir == add:
-                self.alu('ADD', operand_a, operand_b)
-                self.pc += 3
-            elif ir == sub:
-                self.alu('SUB', operand_a, operand_b)
-                self.pc += 3
+            # # LDI: register immediate--Set the value of a register to an integer.
+            # if ir == ldi:
+            #     self.reg[operand_a] = operand_b
+            #     self.pc += 3
+            # # PRN (register) pseudo-instruction -- Print numeric value stored in the given register. Print to the console the decimal integer value that is stored in the given register.
+            # # Some instructions requires up to the next two bytes of data after the PC in memory to perform operations on. Sometimes the byte value is a register number, other times it’s a constant value (in the case of LDI). Using ram_read(), read the bytes at PC+1 and PC+2 from RAM into variables operand_a and operand_b in case the instruction needs them.
+            # elif ir == prn:
+            #     print(f'{self.reg[operand_a]}')
+            #     self.pc += 2
+            # elif ir == mul:
+            #     self.alu('MUL', operand_a, operand_b)
+            #     self.pc += 3
+            # elif ir == add:
+            #     self.alu('ADD', operand_a, operand_b)
+            #     self.pc += 3
+            # elif ir == sub:
+            #     self.alu('SUB', operand_a, operand_b)
+            #     self.pc += 3
 
-            # HLT
-            # Halt the CPU (and exit the emulator).
-            elif ir == hlt:
-                running = False
+            # # HLT
+            # # Halt the CPU (and exit the emulator).
+            # elif ir == hlt:
+            #     running = False
+
+            opcode = self.opcodes[ir]
+
+            if opcode:
+                opcode(operand_a, operand_b)
+
             else:
                 print(f'Unknown command: {ir}')
                 sys.exit(1)
