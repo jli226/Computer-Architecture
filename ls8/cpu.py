@@ -20,6 +20,10 @@ class CPU:
         # R7 is reserved as the stack pointer (SP)
         self.reg = [0] * 8
 
+        self.SP = 7
+
+        self.reg[self.SP] = 0xf4
+
         # Program Counter (PC)
         # PC: Program Counter, address of the currently executing instruction
         # Keep track of where you are on the memory stack
@@ -39,6 +43,7 @@ class CPU:
         '''
         self.fl = 0b00000000
 
+        # Used for generic functions for the CPU
         def LDI(operand_a, operand_b):
             self.reg[operand_a] = operand_b
             self.pc += 3
@@ -46,6 +51,22 @@ class CPU:
         def PRN(operand_a, operand_b):
             print(f'{self.reg[operand_a]}')
             self.pc += 2
+
+        def PUSH(operand_a, operand_b):
+            self.reg[self.SP] -= 1
+            reg_num = self.ram[self.pc + 1]
+            reg_val = self.reg[reg_num]
+            self.ram[self.reg[self.SP]] = reg_val
+            self.pc += 2
+
+        def POP(operand_a, operand_b):
+            val = self.ram[self.reg[self.SP]]
+            reg_num = self.ram[self.pc + 1]
+            self.reg[reg_num] = val
+            self.reg[self.SP] += 1
+            self.pc += 2
+
+        # Calls on ALU
 
         def MUL(operand_a, operand_b):
             self.alu('MUL', operand_a, operand_b)
@@ -59,6 +80,8 @@ class CPU:
             self.alu('SUB', operand_a, operand_b)
             self.pc += 3
 
+        # Used to stop running CPU
+
         def HLT(operand_a, operand_b):
             self.running = False
 
@@ -71,7 +94,9 @@ class CPU:
             0b00000001: HLT,
             0b10100010: MUL,
             0b10100000: ADD,
-            0b10100001: SUB
+            0b10100001: SUB,
+            0b01000101: PUSH,
+            0b01000110: POP
         }
 
     def load(self):
