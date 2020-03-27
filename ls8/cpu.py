@@ -54,17 +54,52 @@ class CPU:
 
         def PUSH(operand_a, operand_b):
             self.reg[self.SP] -= 1
-            reg_num = self.ram[self.pc + 1]
+            reg_num = operand_a
             reg_val = self.reg[reg_num]
             self.ram[self.reg[self.SP]] = reg_val
             self.pc += 2
 
         def POP(operand_a, operand_b):
             val = self.ram[self.reg[self.SP]]
-            reg_num = self.ram[self.pc + 1]
+            reg_num = operand_a
             self.reg[reg_num] = val
             self.reg[self.SP] += 1
             self.pc += 2
+
+        def CALL(operand_a, operand_b):
+            # Push return address on the stack
+            return_address = self.pc + 2
+            self.reg[self.SP] -= 1  # decrement SP
+            self.ram[self.reg[self.SP]] = return_address
+
+            # Set the PC to the value in the register
+            reg_num = operand_a
+            self.pc = self.reg[reg_num]
+
+        def RET(operand_a, operand_b):
+            # Pop the return address off the stack
+            # Store it in the PC
+            self.pc = self.ram[self.reg[self.SP]]
+            self.reg[self.SP] += 1
+
+        # Jump to the address stored in the given register.
+        # Set the PC to the address stored in the given register.
+        def JMP(operand_a, operand_b):
+            self.pc = self.reg[operand_a]
+
+        # If equal flag is set (true), jump to the address stored in the given register.
+        def JEQ(operand_a, operand_b):
+            if bin(self.fl)[-1] == '1':
+                JMP(operand_a, operand_b)
+            else:
+                self.pc += 2
+
+        # If E flag is clear (false, 0), jump to the address stored in the given register.
+        def JNE(operand_a, operand_b):
+            if bin(self.fl)[-1] == '0':
+                JMP(operand_a, operand_b)
+            else:
+                self.pc += 2
 
         # Calls on ALU
 
@@ -80,10 +115,16 @@ class CPU:
             self.alu('SUB', operand_a, operand_b)
             self.pc += 3
 
+        # Compare the values in two registers.
+        def CMP(operand_a, operand_b):
+            self.alu('CMP', operand_a, operand_b)
+            self.pc += 3
+
         # Used to stop running CPU
 
         def HLT(operand_a, operand_b):
             self.running = False
+            self.pc += 1
 
         self.running = True
 
@@ -96,7 +137,13 @@ class CPU:
             0b10100000: ADD,
             0b10100001: SUB,
             0b01000101: PUSH,
-            0b01000110: POP
+            0b01000110: POP,
+            0b01010000: CALL,
+            0b00010001: RET,
+            0b10100111: CMP,
+            0b01010100: JMP,
+            0b01010101: JEQ,
+            0b01010110: JNE
         }
 
     def load(self):
@@ -144,10 +191,26 @@ class CPU:
         def SUB(reg_a, reg_b):
             self.reg[reg_a] -= self.reg[reg_b]
 
+        def CMP(reg_a, reg_b):
+            a = self.reg[reg_a]
+            b = self.reg[reg_b]
+
+            compared_value = a - b
+
+            if compared_value > 0:
+                self.fl = 0b00000010
+            elif compared_value < 0:
+                self.fl = 0b00000100
+            elif compared_value == 0:
+                self.fl = 0b00000001
+            else:
+                self.fl = 0b00000000
+
         alu_opcodes = {
             'ADD': ADD,
             'SUB': SUB,
-            'MUL': MUL
+            'MUL': MUL,
+            'CMP': CMP
         }
 
         alu_op = alu_opcodes[op]
